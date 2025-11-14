@@ -20,9 +20,9 @@ def main():
 
     # 4️⃣ Generar todas las visualizaciones iniciales
     #    - Heatmap de nulos
-    #    - Gráficos de barras para variables categóricas
+    #    - Gráficos de barras para variables categóricas (PLU reemplazados)
     #    - Top 10 regiones
-    #    - Gráficos de series temporales agrupadas por mes (o frecuencia deseada)
+    #    - Gráficos de series temporales agrupadas por mes
     plot_initial_exploration(df, categorical_vars, output_folder="outputs/01_initial_exploration/")
 
     print("\nPipeline completado correctamente. Todas las visualizaciones están en 'outputs/01_initial_exploration/'.")

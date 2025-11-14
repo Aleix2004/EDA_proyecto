@@ -10,9 +10,7 @@ def ensure_output_dir(path):
 
 
 def plot_missing_values_heatmap(df, output_path):
-    """
-    Genera un heatmap mostrando los valores nulos del dataset.
-    """
+    """Genera un heatmap mostrando los valores nulos del dataset."""
     if df.isnull().sum().sum() == 0:
         print("No se generó heatmap: el dataset no contiene valores nulos.")
         return
@@ -29,17 +27,28 @@ def plot_missing_values_heatmap(df, output_path):
 def plot_categorical_counts(df, col, output_path, top_n=None):
     """
     Grafica los conteos de una variable categórica.
-    Limpia strings antes de contar para evitar barras iguales por diferencias de mayúsculas o espacios.
+    Reemplaza PLU numéricos por PLU-<nombre> y limpia otras categorías.
     """
     if col not in df.columns:
         print(f"Columna '{col}' no encontrada, se omite gráfico.")
         return
 
-    # Limpiar la columna: convertir a string, quitar espacios y pasar a minúsculas
-    df[col] = df[col].astype(str).str.strip().str.lower()
+    # 1️⃣ Convertir a string y limpiar espacios
+    df[col] = df[col].astype(str).str.strip()
 
+    # 2️⃣ Reemplazar PLU con nombres descriptivos
+    plu_map = {
+        "4046": "PLU-4046 Hass",
+        "4225": "PLU-4225 Fuerte",
+        "4770": "PLU-4770 Bacon"
+    }
+    df[col] = df[col].replace(plu_map)
+
+    # 3️⃣ Convertir otras categorías a minúsculas (opcional)
+    df[col] = df[col].apply(lambda x: x.lower() if x not in plu_map.values() else x)
+
+    # 4️⃣ Contar y graficar
     counts = df[col].value_counts()
-
     if top_n is not None:
         counts = counts.head(top_n)
 
@@ -50,6 +59,7 @@ def plot_categorical_counts(df, col, output_path, top_n=None):
     plt.xticks(rotation=45)
     plt.tight_layout()
 
+    # 5️⃣ Sobrescribir archivo
     filename = f"value_counts_{col}.png"
     plt.savefig(os.path.join(output_path, filename))
     plt.close()
@@ -58,7 +68,7 @@ def plot_categorical_counts(df, col, output_path, top_n=None):
 
 def plot_time_series(df, date_col, value_col, freq='M', output_path="outputs/01_initial_exploration/"):
     """
-    Grafica una serie temporal agrupada por frecuencia (mes, año, trimestre)
+    Grafica una serie temporal agrupada por frecuencia (mes, trimestre, año)
     """
     if date_col not in df.columns or value_col not in df.columns:
         print(f"Columnas '{date_col}' o '{value_col}' no encontradas, se omite gráfico.")
@@ -68,10 +78,21 @@ def plot_time_series(df, date_col, value_col, freq='M', output_path="outputs/01_
     df['period'] = df[date_col].dt.to_period(freq)
     grouped = df.groupby('period')[value_col].mean().reset_index()
 
+    # Diccionario PLU para el título
+    plu_titles = {
+        "4046": "PLU-4046",
+        "4225": "PLU-4225",
+        "4770": "PLU-4770"
+    }
+
+    # Traducción de frecuencia
+    freq_map = {"M": "Month", "Q": "Quarter", "Y": "Year"}
+    freq_title = freq_map.get(freq, freq)
+
     plt.figure(figsize=(12,6))
     plt.bar(grouped['period'].astype(str), grouped[value_col])
     plt.xticks(rotation=45)
-    plt.title(f"{value_col} promedio por {freq}")
+    plt.title(f"{plu_titles.get(value_col, value_col)} promedio por {freq_title}")
     plt.xlabel(date_col)
     plt.ylabel(value_col)
     plt.tight_layout()
@@ -82,13 +103,14 @@ def plot_time_series(df, date_col, value_col, freq='M', output_path="outputs/01_
     print(f"Gráfico temporal guardado en {filename}")
 
 
+
 def plot_initial_exploration(df, categorical_vars, output_folder="outputs/01_initial_exploration/"):
     """
     Genera visualizaciones iniciales del dataset:
       - Heatmap de valores nulos
       - Gráficos de barras para variables categóricas
-      - Top 10 regiones si existe la columna 'region'
-      - Gráficos de series temporales para columnas de fecha + valor numérico
+      - Top 10 regiones
+      - Gráficos de series temporales agrupadas
     """
     ensure_output_dir(output_folder)
     print(f"Guardando visualizaciones en: {output_folder}")
@@ -104,8 +126,7 @@ def plot_initial_exploration(df, categorical_vars, output_folder="outputs/01_ini
     if "region" in df.columns:
         plot_categorical_counts(df, "region", output_folder, top_n=10)
 
-    # 4️⃣ Gráficos de series temporales (para columnas de tipo fecha + valor numérico)
-    # Aquí asumimos que si existe columna 'Date' y alguna numérica como 'AveragePrice'
+    # 4️⃣ Gráficos de series temporales para columnas numéricas usando 'Date'
     if "Date" in df.columns:
         numeric_cols = df.select_dtypes(include=["int64","float64"]).columns.tolist()
         for value_col in numeric_cols:
