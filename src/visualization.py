@@ -28,7 +28,7 @@ def plot_missing_values_heatmap(df, output_path):
 def plot_categorical_counts(df, col, output_path, top_n=None):
     """
     Plot bar charts of categorical variables.
-    Replaces numeric PLUs with descriptive PLU names.
+    Replaces PLU values with descriptive names.
     """
     if col not in df.columns:
         print(f"Column '{col}' not found. Skipping.")
@@ -99,6 +99,10 @@ def plot_time_series(df, date_col, value_col, freq='M', output_path="outputs/01_
     plt.title(f"{title_value} average per {freq_title}")
     plt.xlabel(freq_title)
     plt.ylabel(value_col)
+
+    # 🔥 Disable scientific notation (removes the "1e6" label)
+    plt.ticklabel_format(style='plain', axis='y')
+
     plt.tight_layout()
 
     filename = os.path.join(output_path, f"{value_col}_{date_col}_{freq}.png")
