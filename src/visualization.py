@@ -138,3 +138,4 @@ def plot_initial_exploration(df, categorical_vars, output_folder="outputs/01_ini
             plot_time_series(df, "Date", value_col, freq="M", output_path=output_folder)
 
     print("All visualizations generated successfully.")
+    
