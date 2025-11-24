@@ -42,10 +42,10 @@ def plot_temporal_features(df, output_path="outputs/04_feature_engineering/"):
         columns="Year",
         values="Is_Holiday",
         aggfunc="sum"
-    ).reindex(index=range(1,13))  # ordenar de enero a diciembre
+    ).reindex(index=range(1,13)).fillna(0)  # ← Rellenar NaN con 0
 
     plt.figure(figsize=(12,8))
-    sns.heatmap(heatmap_data, cmap="Reds", linewidths=0.5, annot=True, fmt="d",
+    sns.heatmap(heatmap_data, cmap="Reds", linewidths=0.5, annot=True, fmt=".0f",  # ← Cambiado de "d" a ".0f"
                 yticklabels=[calendar.month_name[m] for m in range(1,13)])
     plt.title("Holiday Frequency Calendar Heatmap")
     plt.ylabel("Month")
@@ -54,4 +54,4 @@ def plot_temporal_features(df, output_path="outputs/04_feature_engineering/"):
     plt.savefig(os.path.join(output_path, "holiday_calendar_heatmap.png"))
     plt.close()
 
-    print("Temporal feature visualizations saved in:", output_path)
+    print("✓ Temporal feature visualizations saved in:", output_path)
