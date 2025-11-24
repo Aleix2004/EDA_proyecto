@@ -1,11 +1,52 @@
+import sys
+import os
+
+# --- Asegurar que src esté en el path ---
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from src.data_loader import load_and_inspect_data, get_date_range
+from src.data_processing import clean_data, add_features
+from src.visualization import plot_temporal_features
 
 def main():
-    filepath = "data/raw/avocado.csv"
-
-    df, info = load_and_inspect_data(filepath)
-
-    get_date_range(df, "Date")
+    # --- 1. Configuración ---
+    raw_filepath = "data/raw/avocado.csv"
+    output_folder = "outputs/04_feature_engineering/"
+    os.makedirs(output_folder, exist_ok=True)
+    
+    print("=" * 60)
+    print("PIPELINE DE PROCESAMIENTO DE DATOS")
+    print("=" * 60)
+    
+    # --- 2. Cargar y explorar datos RAW ---
+    print("\n=== PASO 1: CARGA Y EXPLORACIÓN ===")
+    df_raw, info = load_and_inspect_data(raw_filepath)
+    
+    if "Date" not in df_raw.columns:
+        raise KeyError("No se encontró la columna 'Date'.")
+    
+    get_date_range(df_raw, "Date")
+    
+    # --- 3. Limpiar datos ---
+    print("\n=== PASO 2: LIMPIEZA DE DATOS ===")
+    df_clean = clean_data(save=True)
+    print(f"✓ Dimensiones después de limpieza: {df_clean.shape}")
+    
+    # --- 4. Transformar datos (Feature Engineering) ---
+    print("\n=== PASO 3: TRANSFORMACIÓN Y FEATURE ENGINEERING ===")
+    df_transformed = add_features(df_clean, save=True)
+    print(f"✓ Dimensiones después de transformación: {df_transformed.shape}")
+    print(f"✓ Nuevas columnas agregadas: {[col for col in df_transformed.columns if col not in df_clean.columns]}")
+    
+    # --- 5. Visualizar características transformadas ---
+    print("\n=== PASO 4: VISUALIZACIÓN ===")
+    plot_temporal_features(df_transformed, output_path=output_folder)
+    
+    print("\n" + "=" * 60)
+    print("✓ PIPELINE COMPLETADO EXITOSAMENTE")
+    print(f"✓ Visualizaciones guardadas en: {output_folder}")
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()
+
