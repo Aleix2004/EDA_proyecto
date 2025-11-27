@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import calendar
-from data_processing import clean_data
+from src.data_processing import clean_data
 
 
 def plot_cleaning_graphics():
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     plot_cleaning_graphics()
     
     # Para visualizaciones temporales necesitas datos transformados
-    from data_processing import add_features
+    from src.data_processing import add_features
     df_clean = clean_data(save=False)
     df_transformed = add_features(df_clean, save=False)
     plot_temporal_features(df_transformed)

@@ -56,6 +56,9 @@ def add_features(df, save=True):
     """
     Añade características temporales y relacionadas con festividades (Feature Engineering).
     
+    NOTA: Este dataset tiene datos SEMANALES (domingos), no diarios.
+    Por eso detectamos festividades usando ventanas de ±3 días.
+    
     Parámetros
     ----------
     df : pandas.DataFrame
@@ -92,25 +95,42 @@ def add_features(df, save=True):
     }
     df["Season"] = df["Month"].map(season_map)
 
-    # --- Holiday Flags ---
-    df["Is_SuperBowl"] = ((df["Month"] == 2) & (df["Week"].isin([5, 6]))).astype(int)
-    df["Is_CincoDeMayo"] = ((df["Month"] == 5) & (df["Date"].dt.day.between(4, 6))).astype(int)
-
-    # Thanksgiving = cuarto jueves de noviembre
+    # --- Holiday Flags (con ventana de ±3 días) ---
+    df["Is_SuperBowl"] = 0
+    df["Is_CincoDeMayo"] = 0
     df["Is_Thanksgiving"] = 0
-    nov = df[df["Month"] == 11].copy()
-    for year in nov["Date"].dt.year.unique():
-        # primer día de noviembre
-        first_nov = pd.Timestamp(year=year, month=11, day=1)
-        # cuarto jueves = primer jueves + 3 semanas
-        thanksgiving = first_nov + Week(weekday=3) + pd.DateOffset(weeks=3)
-        df.loc[df["Date"] == thanksgiving, "Is_Thanksgiving"] = 1
+    
+    for year in df["Date"].dt.year.unique():
+        # Super Bowl: primer domingo de febrero
+        feb_dates = pd.date_range(start=f'{year}-02-01', end=f'{year}-02-28', freq='D')
+        sundays = [d for d in feb_dates if d.weekday() == 6]  # 6 = domingo
+        if len(sundays) >= 1:
+            superbowl = sundays[0]  # primer domingo de febrero
+            # Marcar registros dentro de ±3 días
+            mask = (df["Date"] >= superbowl - pd.Timedelta(days=3)) & \
+                   (df["Date"] <= superbowl + pd.Timedelta(days=3))
+            df.loc[mask, "Is_SuperBowl"] = 1
+        
+        # Cinco de Mayo: 5 de mayo ±3 días
+        cinco_mayo = pd.Timestamp(year=year, month=5, day=5)
+        mask = (df["Date"] >= cinco_mayo - pd.Timedelta(days=3)) & \
+               (df["Date"] <= cinco_mayo + pd.Timedelta(days=3))
+        df.loc[mask, "Is_CincoDeMayo"] = 1
+        
+        # Thanksgiving: cuarto jueves de noviembre ±3 días
+        nov_dates = pd.date_range(start=f'{year}-11-01', end=f'{year}-11-30', freq='D')
+        thursdays = [d for d in nov_dates if d.weekday() == 3]  # 3 = jueves
+        if len(thursdays) >= 4:
+            thanksgiving = thursdays[3]  # cuarto jueves
+            mask = (df["Date"] >= thanksgiving - pd.Timedelta(days=3)) & \
+                   (df["Date"] <= thanksgiving + pd.Timedelta(days=3))
+            df.loc[mask, "Is_Thanksgiving"] = 1
 
     # General holiday flag
     df["Is_Holiday"] = (
-        df["Is_SuperBowl"] |
-        df["Is_CincoDeMayo"] |
-        df["Is_Thanksgiving"]
+        (df["Is_SuperBowl"] == 1) |
+        (df["Is_CincoDeMayo"] == 1) |
+        (df["Is_Thanksgiving"] == 1)
     ).astype(int)
 
     # Guardar datos transformados
@@ -121,6 +141,7 @@ def add_features(df, save=True):
 
     return df
 
+    
 
 if __name__ == "__main__":
     # Probar pipeline completo
@@ -132,3 +153,15 @@ if __name__ == "__main__":
     df_transformado = add_features(df_limpio, save=True)
     print(f"Filas después de transformación: {df_transformado.shape}")
     print(f"Nuevas columnas: {df_transformado.columns.tolist()}")
+    
+    # Verificar detección de festividades
+    print("\n=== VERIFICACIÓN DE FESTIVIDADES ===")
+    print(f"Super Bowl detectado: {df_transformado['Is_SuperBowl'].sum()} veces")
+    print(f"Cinco de Mayo detectado: {df_transformado['Is_CincoDeMayo'].sum()} veces")
+    print(f"Thanksgiving detectado: {df_transformado['Is_Thanksgiving'].sum()} veces")
+    print(f"Total holidays: {df_transformado['Is_Holiday'].sum()} registros")
+    
+    # Mostrar algunos ejemplos
+    print("\n=== EJEMPLOS DE FECHAS DETECTADAS ===")
+    holidays = df_transformado[df_transformado['Is_Holiday'] == 1][['Date', 'Is_SuperBowl', 'Is_CincoDeMayo', 'Is_Thanksgiving']].head(10)
+    print(holidays)
