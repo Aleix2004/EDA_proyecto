@@ -2,23 +2,21 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import calendar
 from src.data_processing import clean_data
 
 
 def plot_cleaning_graphics():
-    """Genera gráficos de diagnóstico del proceso de limpieza."""
-    # Crear carpeta de salida
+    """Genera graficos para mostrar el proceso de limpieza de datos."""
     output_dir = "outputs/02_data_cleaning/"
     os.makedirs(output_dir, exist_ok=True)
 
     # Cargar datos originales
     df_raw = pd.read_csv("data/raw/avocado.csv")
 
-    # Limpiar datos
-    df_clean = clean_data(save=False)  # No guardar aquí, solo para comparar
+    # Aplicar limpieza
+    df_clean = clean_data(save=False)
 
-    # --- BOXPLOT ANTES ---
+    # Boxplot antes de limpieza
     plt.figure(figsize=(8, 5))
     plt.boxplot(df_raw['AveragePrice'], vert=False)
     plt.title('AveragePrice - Antes de limpieza')
@@ -26,15 +24,15 @@ def plot_cleaning_graphics():
     plt.savefig(os.path.join(output_dir, "boxplot_before.png"), bbox_inches='tight')
     plt.close()
 
-    # --- BOXPLOT DESPUÉS ---
+    # Boxplot despues de limpieza
     plt.figure(figsize=(8, 5))
     plt.boxplot(df_clean['AveragePrice'], vert=False)
-    plt.title('AveragePrice - Después de limpieza')
+    plt.title('AveragePrice - Despues de limpieza')
     plt.xlabel('AveragePrice')
     plt.savefig(os.path.join(output_dir, "boxplot_after.png"), bbox_inches='tight')
     plt.close()
 
-    # --- DETECCIÓN DE OUTLIERS (SCATTER) ---
+    # Deteccion de outliers
     Q1 = df_raw['AveragePrice'].quantile(0.25)
     Q3 = df_raw['AveragePrice'].quantile(0.75)
     IQR = Q3 - Q1
@@ -47,114 +45,113 @@ def plot_cleaning_graphics():
     plt.scatter(range(len(df_raw)), df_raw['AveragePrice'], s=10, label='Normal')
     plt.scatter(df_raw[df_raw['is_outlier']].index,
                 df_raw[df_raw['is_outlier']]['AveragePrice'], s=10, c='red', label='Outliers')
-    plt.title('Detección de Outliers - AveragePrice (Raw)')
-    plt.xlabel('Índice')
+    plt.title('Deteccion de Outliers - AveragePrice')
+    plt.xlabel('Indice')
     plt.ylabel('AveragePrice')
     plt.legend()
     plt.savefig(os.path.join(output_dir, "outliers_scatter.png"), bbox_inches='tight')
     plt.close()
 
-    print("✓ Visualizaciones de limpieza guardadas en:", output_dir)
+    print("Visualizaciones de limpieza guardadas en:", output_dir)
 
 
 def plot_temporal_features(df, output_path="outputs/04_feature_engineering/"):
-    """Generate visualizations for temporal and holiday features."""
-
+    """
+    Genera visualizaciones de las variables temporales creadas.
+    """
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    # --- 1. Season Distribution ---
+    # Distribucion por estaciones
     plt.figure(figsize=(8,5))
     sns.countplot(data=df, x="Season", order=["Winter", "Spring", "Summer", "Fall"])
-    plt.title("Season Distribution")
+    plt.title("Distribucion por Estacion")
     plt.ylabel("Count")
-    plt.xlabel("Season")
+    plt.xlabel("Estacion")
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "season_distribution.png"))
     plt.close()
 
-    # --- 2. Holiday Occurrences Over Time ---
-    plt.figure(figsize=(14,6))
-    plt.plot(df["Date"], df["Is_SuperBowl"], label="SuperBowl", marker="o", linestyle="None")
-    plt.plot(df["Date"], df["Is_CincoDeMayo"], label="Cinco de Mayo", marker="o", linestyle="None")
-    plt.plot(df["Date"], df["Is_Thanksgiving"], label="Thanksgiving", marker="o", linestyle="None")
-    plt.legend()
-    plt.title("Holiday Occurrences Over Time")
-    plt.ylabel("Holiday Flag")
-    plt.xlabel("Date")
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_path, "holiday_occurrences.png"))
-    plt.close()
-
-    # --- 3. Holiday Calendar Heatmap ---
-    df_calendar = df.copy()
-    df_calendar["Year"] = df_calendar["Date"].dt.year
-    df_calendar["Month"] = df_calendar["Date"].dt.month
-
-    heatmap_data = df_calendar.pivot_table(
-        index="Month",
-        columns="Year",
-        values="Is_Holiday",
-        aggfunc="sum"
-    ).reindex(index=range(1,13)).fillna(0)
-
-    plt.figure(figsize=(12,8))
-    sns.heatmap(heatmap_data, cmap="Reds", linewidths=0.5, annot=True, fmt=".0f",
-                yticklabels=[calendar.month_name[m] for m in range(1,13)])
-    plt.title("Holiday Frequency Calendar Heatmap")
-    plt.ylabel("Month")
-    plt.xlabel("Year")
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_path, "holiday_calendar_heatmap.png"))
-    plt.close()
-
-    print("✓ Temporal feature visualizations saved in:", output_path)
-
-
-if __name__ == "__main__":
-    # Generar ambos tipos de visualizaciones
-    plot_cleaning_graphics()
+    # Precio promedio por estacion
+    plt.figure(figsize=(10, 6))
+    season_order = ["Winter", "Spring", "Summer", "Fall"]
+    season_prices = df.groupby("Season", observed=True)["AveragePrice"].mean().reindex(season_order)
     
-    # Para visualizaciones temporales necesitas datos transformados
-    from src.data_processing import add_features
-    df_clean = clean_data(save=False)
-    df_transformed = add_features(df_clean, save=False)
-    plot_temporal_features(df_transformed)
+    bars = plt.bar(season_order, season_prices, color=['#3498db', '#2ecc71', '#e74c3c', '#f39c12'])
+    plt.title("Precio Promedio por Estacion", fontsize=14, fontweight='bold')
+    plt.ylabel("Precio Promedio ($)")
+    plt.xlabel("Estacion")
+    
+    # Añadir valores sobre las barras
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height,
+                f'${height:.2f}',
+                ha='center', va='bottom')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_path, "price_by_season.png"))
+    plt.close()
+
+    # Evolucion temporal del precio por tipo
+    plt.figure(figsize=(14, 6))
+    
+    temporal_data = df.groupby(['Date', 'type'], observed=True)['AveragePrice'].mean().reset_index()
+    
+    for avocado_type in temporal_data['type'].unique():
+        subset = temporal_data[temporal_data['type'] == avocado_type]
+        plt.plot(subset['Date'], subset['AveragePrice'], 
+                label=avocado_type.capitalize(), linewidth=2, alpha=0.7)
+    
+    plt.title("Evolucion Temporal del Precio por Tipo", fontsize=14, fontweight='bold')
+    plt.xlabel("Fecha")
+    plt.ylabel("Precio Promedio ($)")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_path, "temporal_price_evolution.png"))
+    plt.close()
+
+    print("Visualizaciones temporales guardadas en:", output_path)
 
 
 def plot_transformed_features(df, output_dir="outputs/03_transformation"):
     """
-    Genera histogramas y gráficos de comparación para las nuevas variables derivadas.
+    Genera histogramas de las variables derivadas.
 
-    Parámetros
+    Parametros
     ----------
     df : pandas.DataFrame
-        Dataset transformado con nuevas variables.
+        Dataset con las nuevas variables
     output_dir : str
-        Directorio donde se guardarán los gráficos.
+        Carpeta donde se guardaran los graficos
     """
     os.makedirs(output_dir, exist_ok=True)
 
-    # Variables derivadas
+    # Variables derivadas principales
     derived_vars = ['Price_per_Volume', 'Prop_4046', 'Prop_4225', 'Prop_4770', 'Prop_Bags']
     
     for var in derived_vars:
+        if var not in df.columns:
+            continue
+            
         # Histograma
         plt.figure(figsize=(8, 6))
         df[var].hist(bins=30, color='skyblue', edgecolor='black')
-        plt.title(f"Distribución de {var}")
+        plt.title(f"Distribucion de {var}")
         plt.xlabel(var)
         plt.ylabel("Frecuencia")
         plt.savefig(os.path.join(output_dir, f"{var}_histogram.png"))
         plt.close()
+    
+    print(f"Visualizaciones de transformaciones guardadas en: {output_dir}")
 
-        # Comparación con variable original (si aplica)
-        if var == 'Price_per_Volume':
-            plt.figure(figsize=(8, 6))
-            plt.scatter(df['AveragePrice'], df[var], alpha=0.5)
-            plt.title(f"Comparación: AveragePrice vs {var}")
-            plt.xlabel("AveragePrice")
-            plt.ylabel(var)
-            plt.savefig(os.path.join(output_dir, f"AveragePrice_vs_{var}.png"))
-            plt.close()
 
+if __name__ == "__main__":
+    # Ejecutar generacion de graficos
+    plot_cleaning_graphics()
+    
+    from src.data_processing import add_features
+    df_clean = clean_data(save=False)
+    df_transformed = add_features(df_clean, save=False)
+    plot_temporal_features(df_transformed)

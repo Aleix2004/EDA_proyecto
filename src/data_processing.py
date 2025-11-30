@@ -48,7 +48,7 @@ def clean_data(save=True):
     if save:
         os.makedirs("data/processed", exist_ok=True)
         df.to_csv("data/processed/avocado_clean.csv", index=False)
-        print("✓ Datos limpios guardados en data/processed/avocado_clean.csv")
+        print("Datos limpios guardados en data/processed/avocado_clean.csv")
 
     return df
 
@@ -138,7 +138,7 @@ def add_features(df, save=True):
     if save:
         os.makedirs("data/processed", exist_ok=True)
         df.to_csv("data/processed/avocado_transformed.csv", index=False)
-        print("✓ Datos transformados guardados en data/processed/avocado_transformed.csv")
+        print("Datos transformados guardados en data/processed/avocado_transformed.csv")
 
     return df
 
